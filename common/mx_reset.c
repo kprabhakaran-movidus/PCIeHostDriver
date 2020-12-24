@@ -86,8 +86,6 @@ int mx_reset_device(struct mx_dev *mx_dev) {
         /* Give some time to the device to trigger and complete the reset. */
         msleep(10);
 
-        //Multiple devices should be handled at an upper layer.
-
         pcie_capability_read_word(upstream, PCI_EXP_LNKCTL, &link_ctl);
         link_ctl |= PCI_EXP_LNKCTL_RL;
         pcie_capability_write_word(upstream, PCI_EXP_LNKCTL, link_ctl);
