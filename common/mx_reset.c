@@ -27,8 +27,6 @@
 #define MX_VENDOR_SPEC_DLLP     (0x704)
 #define MX_RESET_DEV            (0xDEADDEAD)
 
-#define PERICOM_SWITCH_DID      (0x2304)
-
 int mx_reset_restore_and_check_device(struct mx_dev *mx_dev) {
     /* Restore the device's context. */
     mx_pci_dev_ctx_restore(mx_dev);
@@ -54,11 +52,8 @@ int mx_reset_restore_and_check_device(struct mx_dev *mx_dev) {
 int mx_reset_device(struct mx_dev *mx_dev) {
     int error;
     int try = 0;
-    int port_cnt = 0;
     u16 link_ctl = 0;
     u16 link_stat = 0;
-    u32 buses = 0;
-    u8 primary, secondary, subordinate;
 
     struct pci_dev *pdev = NULL;
     struct pci_dev *upstream=NULL;
@@ -82,7 +77,6 @@ int mx_reset_device(struct mx_dev *mx_dev) {
     upstream = pdev->bus->self;
 
     while(try++ < 100) {
-    	int count = 0;
         /* Give some time to the device to trigger and complete the reset. */
         msleep(10);
 
@@ -91,8 +85,8 @@ int mx_reset_device(struct mx_dev *mx_dev) {
         pcie_capability_write_word(upstream, PCI_EXP_LNKCTL, link_ctl);
 
         pcie_capability_read_word(upstream,  PCI_EXP_LNKSTA, &link_stat);
-        printk("[bus %02x-%02x] link_ctl %02x link_stat %02x\n", secondary,
-        		subordinate, link_ctl, (link_stat&PCI_EXP_LNKSTA_LT));
+
+        printk("link_ctl %02x link_stat %02x\n", link_ctl, (link_stat&PCI_EXP_LNKSTA_LT));
     }
 
     /* Check that the device is up again before restoring the full PCI context. */
