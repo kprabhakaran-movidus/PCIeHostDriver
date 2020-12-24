@@ -51,10 +51,6 @@ int mx_reset_restore_and_check_device(struct mx_dev *mx_dev) {
     return 0;
 }
 
-//I think current form of this function is to reset one device, not the entire structure
-//[aboji]TODO: remove link retraining enable for both devices, add it just for the requested device
-//function should be called fore each device which is reset
-//to sustain this theory, looking through the devices registered (ls /dev/), each MX has its own file descriptor, so reset needs to be individual.
 int mx_reset_device(struct mx_dev *mx_dev) {
     int error;
     int try = 0;
@@ -64,9 +60,6 @@ int mx_reset_device(struct mx_dev *mx_dev) {
     u32 buses = 0;
     u8 primary, secondary, subordinate;
 
-
-    //[aboji]TODO: create a dinamically allocated list to remove hardcoding number of devices
-    //[aboji]TODO: replace with struct pci_dev** pdev
     struct pci_dev *pdev = NULL;
     struct pci_dev *upstream=NULL;
 
@@ -84,37 +77,25 @@ int mx_reset_device(struct mx_dev *mx_dev) {
      * reset. */
     pci_write_config_dword(mx_dev->pci, MX_VENDOR_SPEC_DLLP, MX_RESET_DEV);
 
-    /* find the percom device and pass the retrain link command */
-    //TODO find specific, mx_dev structure should hold the required primary bus (secondary bus of the upstream port)
-    //=> we need to find the primary bus of the upstream port
-    // I think we want to remove identifying the upstream port as PERICOM, this should work regardless of the DID.
-    //to access upstream device: pdev->bus->parent->self
+    /* find the upstream device and pass the retrain link command */
     pdev = mx_dev->pci;
-    upstream = pdev->bus->parent->self;
+    upstream = pdev->bus->self;
 
     while(try++ < 100) {
-        int count = 0;
+    	int count = 0;
         /* Give some time to the device to trigger and complete the reset. */
         msleep(10);
 
-        //[aboji]TODO: remove the count, just do this for the device in question
         //Multiple devices should be handled at an upper layer.
 
-       pcie_capability_read_word(upstream, PCI_EXP_LNKCTL, &link_ctl);
-       link_ctl |= PCI_EXP_LNKCTL_RL;
-       pcie_capability_write_word(upstream, PCI_EXP_LNKCTL, link_ctl);
+        pcie_capability_read_word(upstream, PCI_EXP_LNKCTL, &link_ctl);
+        link_ctl |= PCI_EXP_LNKCTL_RL;
+        pcie_capability_write_word(upstream, PCI_EXP_LNKCTL, link_ctl);
 
-       pcie_capability_read_word(upstream,  PCI_EXP_LNKSTA, &link_stat);
-       printk("[bus %02x-%02x] link_ctl %02x link_stat %02x\n", secondary, subordinate, link_ctl, (link_stat&PCI_EXP_LNKSTA_LT));
+        pcie_capability_read_word(upstream,  PCI_EXP_LNKSTA, &link_stat);
+        printk("[bus %02x-%02x] link_ctl %02x link_stat %02x\n", secondary,
+        		subordinate, link_ctl, (link_stat&PCI_EXP_LNKSTA_LT));
     }
-
-    /* decrement the reference count and release */
-    //[aboji]TODO: just one device
-    //pci_dev_put(pdev[0]);
-    //pci_dev_put(pdev[1]);
-
-    /* Give some time to the device to trigger and complete the reset. */
-    //msleep(MX_DEV_RESET_TIME_MS);
 
     /* Check that the device is up again before restoring the full PCI context. */
     if (!mx_pci_dev_id_valid(mx_dev)) {
